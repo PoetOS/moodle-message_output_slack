@@ -23,6 +23,8 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->dirroot.'/message/output/lib.php');
 
 /**
@@ -40,7 +42,7 @@ class message_output_slack extends message_output {
      * @param stdClass $eventdata the event data submitted by the message sender plus $eventdata->savedmessageid
      * @return true if ok, false if error
      */
-    function send_message($eventdata){
+    public function send_message($eventdata) {
         global $CFG;
 
         // Skip any messaging of suspended and deleted users.
@@ -49,7 +51,7 @@ class message_output_slack extends message_output {
         }
 
         if (!empty($CFG->noemailever)) {
-            // hidden setting for development sites, set in config.php if needed
+            // Hidden setting for development sites, set in config.php if needed.
             debugging('$CFG->noemailever is active, no slack message sent.', DEBUG_MINIMAL);
             return true;
         }
@@ -82,11 +84,9 @@ class message_output_slack extends message_output {
      *
      * @param array $preferences An array of user preferences
      */
-    function config_form($preferences){
-        global $CFG;
-
+    public function config_form($preferences) {
         if (!$this->is_system_configured()) {
-            return get_string('notconfigured','message_slack');
+            return get_string('notconfigured', 'message_slack');
         } else {
             return get_string('slackusername', 'message_slack').': <input size="30" name="slack_slackusername" value="' .
                 s($preferences->slack_slackusername).'" />';
@@ -99,7 +99,7 @@ class message_output_slack extends message_output {
      * @param stdClass $form preferences form class
      * @param array $preferences preferences array
      */
-    function process_form($form, &$preferences){
+    public function process_form($form, &$preferences) {
         if (isset($form->slack_slackusername) && !empty($form->slack_slackusername)) {
             // Put the @ sign at the beginning of the username.
             if (substr($form->slack_slackusername, 0, 1) != '@') {
@@ -115,7 +115,7 @@ class message_output_slack extends message_output {
      * @param array $preferences preferences array
      * @param int $userid the user id
      */
-    function load_data(&$preferences, $userid){
+    public function load_data(&$preferences, $userid) {
         $preferences->slack_slackusername = get_user_preferences( 'message_processor_slack_slackusername', '', $userid);
     }
 
@@ -123,8 +123,7 @@ class message_output_slack extends message_output {
      * Tests whether the Slack settings have been configured
      * @return boolean true if Slack is configured
      */
-    function is_system_configured() {
-        global $CFG;
+    public function is_system_configured() {
         return !empty(get_config('message_slack', 'webhookurl'));
     }
 
@@ -134,10 +133,10 @@ class message_output_slack extends message_output {
      * @return bool has the user made all the necessary settings
      * in their profile to allow this plugin to be used.
      */
-    function is_user_configured($user = null) {
+    public function is_user_configured($user = null) {
         global $USER;
 
-        if (is_null($user)) {
+        if ($user === null) {
             $user = $USER;
         }
         return !empty(get_user_preferences('message_processor_slack_slackusername', null, $user->id));

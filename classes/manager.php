@@ -41,27 +41,31 @@ class manager {
 
     /**
      * Function to filter content and return to slack's API requirements.
-     * @param string $message Optional message to slackify.
+     * @param string $message Optional message to load and slackify.
      * @return string The slackified string.
      */
     public function slackify_message($message = '') {
+        if (!empty($message)) {
+            $this->message = $message;
+        }
+
         // Slack needs to escape quotes, move links into angle brackets, and use \n for line breaks.
 
         // Change linked text to Slack style with a placeholder for adding back at the end.
-        $message = preg_replace('/<a href="(.*?)".*?>(.*?)<\/a>/', '<slack ${1}|${2}>', $message);
+        $this->message = preg_replace('/<a href="(.*?)".*?>(.*?)<\/a>/', '<slack ${1}|${2}>', $this->message);
 
         // Change <br>, <div> and <p> to \n.
-        $message = preg_replace(['/<br\s*\/?>/', '/<p.*?>/', '/<div.*?>/', '/<\/p>/', '/<\/div>/'], ['\n', '\n', '\n'], $message);
+        $this->message = preg_replace(['/<br\s*\/?>/', '/<p.*?>/', '/<div.*?>/', '/<\/p>/', '/<\/div>/'], ['\n', '\n', '\n'], $this->message);
 
         // Add slashes to any remaining quote characters.
-        $message = addcslashes($message, '\'"');
+        $this->message = addcslashes($this->message, '\'"');
 
         // Clean any remaining tags except the ones we marked as placeholders.
-        $message = strip_tags($message, '<slack>');
+        $this->message = strip_tags($this->message, '<slack>');
 
         // Finally, restore marked slack tags.
-        $message = str_replace('<slack ', '<', $message);
+        $this->message = str_replace('<slack ', '<', $this->message);
 
-        return $message;
+        return $this->message;
     }
 }

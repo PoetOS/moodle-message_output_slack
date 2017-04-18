@@ -37,6 +37,13 @@ require_once($CFG->dirroot.'/message/output/lib.php');
 class message_output_slack extends message_output {
 
     /**
+     * Constructor to add needed properties to the Slack app.
+     */
+    public function __construct() {
+        $this->slackmanager = new message_slack\manager();
+    }
+
+    /**
      * Processes the message and sends a notification via slack
      *
      * @param stdClass $eventdata the event data submitted by the message sender plus $eventdata->savedmessageid
@@ -57,39 +64,26 @@ class message_output_slack extends message_output {
         }
 
         // If no slack URL congigured, skip.
-        if (empty($webhookurl = get_config('message_slack', 'webhookurl'))) {
+        if (empty($this->slackmanager->config('webhookurl'))) {
             return true;
         }
 
-        // If user doesn't have a slack username, skip.
-        if (empty($channelname = get_user_preferences( 'message_processor_slack_slackusername', '', $eventdata->userto->id))) {
-            return true;
-        }
+        $message = !empty($eventdata->fullmessagehtml) ? $eventdata->fullmessagehtml : $eventdata->fullmessage;
 
-        $slackmanager = new message_slack\manager();
-        $message = $slackmanager->slackify_message($eventdata->fullmessagehtml);
-
-        $curl = new curl();
-
-        $username = get_config('message_slack', 'botname');
-        $username = !empty($username) ? '"username": "'.$username.'", ' : '';
-
-        $curl->post($webhookurl, ['payload' => '{"channel": "'.$channelname.'", '.$username.'"text": "'.$message.'"}']);
-
-        return true;
+        return $this->slackmanager->send_message($message, $eventdata->userto->id);
     }
 
     /**
      * Creates necessary fields in the messaging config form.
      *
-     * @param array $preferences An array of user preferences
+     * @param array $preferences An object of user preferences
      */
     public function config_form($preferences) {
+        global $USER;
         if (!$this->is_system_configured()) {
             return get_string('notconfigured', 'message_slack');
         } else {
-            return get_string('slackusername', 'message_slack').': <input size="30" name="slack_slackusername" value="' .
-                s($preferences->slack_slackusername).'" />';
+            return $this->slackmanager->config_form($preferences, $USER->id);
         }
     }
 
@@ -112,11 +106,12 @@ class message_output_slack extends message_output {
     /**
      * Loads the config data from database to put on the form during initial form display
      *
-     * @param array $preferences preferences array
+     * @param object $preferences preferences object
      * @param int $userid the user id
      */
     public function load_data(&$preferences, $userid) {
-        $preferences->slack_slackusername = get_user_preferences( 'message_processor_slack_slackusername', '', $userid);
+        $preferences->slack_slackusername = get_user_preferences('message_processor_slack_slackusername', '', $userid);
+        $preferences->slack_configuration_url = get_user_preferences('message_processor_slack_configuration_url', '', $userid);
     }
 
     /**
@@ -124,7 +119,7 @@ class message_output_slack extends message_output {
      * @return boolean true if Slack is configured
      */
     public function is_system_configured() {
-        return !empty(get_config('message_slack', 'webhookurl'));
+        return !empty($this->slackmanager->config('webhookurl'));
     }
 
     /**
@@ -139,6 +134,6 @@ class message_output_slack extends message_output {
         if ($user === null) {
             $user = $USER;
         }
-        return !empty(get_user_preferences('message_processor_slack_slackusername', null, $user->id));
+        return $this->slackmanager->is_user_configured($user->id);
     }
 }

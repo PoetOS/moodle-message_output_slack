@@ -9,3 +9,12 @@ Each user will also need to add their Slack username from the team site to their
 *** This is an ALPHA release, and is not intended to be used in any production environment ***
 
 If you wish to contribute in any way, message me on github or to mike.churchward@poetgroup.org.
+
+
+-----
+
+A better way to do this might be by Slack button... https://api.slack.com/docs/slack-button
+It does put the message in the user's private area.
+You configure a button, and then add the client_id and client_secret to the Moodle config.
+Then each user uses the button to configure their specific instance. The button generates a specific URL for each user.
+I need to figure out how to limit the choice of channel to just the user.

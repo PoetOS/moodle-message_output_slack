@@ -26,10 +26,17 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['botname'] = 'Bot name';
+$string['clientid'] = 'Client ID';
+$string['clientsecret'] = 'Client secret';
+$string['configclientid'] = 'Client ID from your App Credentials (https://api.slack.com/apps)';
+$string['configclientsecret'] = 'Client Secret from your App Credentials (https://api.slack.com/apps)';
 $string['configslackbotname'] = 'Choose the username that this integration will post as.';
-$string['configslackwebhookurl'] = 'Webhook URL from your Slack Incoming Webhook setup page';
+$string['configslackwebhookurl'] = 'Webhook URL from your Slack Incoming Webhook setup page.';
+$string['configuseslackbutton'] = 'Users click a slack button to configure their connection (recommended).';
+$string['connectslackaccount'] = 'Connect your slack account';
+$string['manageslackaccount'] = 'Manage your slack account';
 $string['notconfigured'] = 'The Slack server hasn\'t been configured so Slack messages cannot be sent';
 $string['pluginname'] = 'Slack message processor';
 $string['slackusername'] = 'Your Slack username (@username)';
 $string['slackwebhookurl'] = 'Webhook URL';
-
+$string['useslackbutton'] = 'Use Slack Button';

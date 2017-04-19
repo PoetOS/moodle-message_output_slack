@@ -43,32 +43,44 @@ class manager {
     }
 
     /**
-     * Send the message to Slack.
+     * Send the message to Slack. If the user has a message_processor_slack_url set, then the Slack button OAuth process if being
+     * used. If not, then there needs to be an incoming webhook URL set.
      * @param string $message The message contect to send to Slack.
      * @param int $userid The Moodle user id that is being sent to.
      */
     public function send_message($message, $userid) {
-        // If user doesn't have a slack username, skip.
-        if (empty($channelname = get_user_preferences( 'message_processor_slack_slackusername', '', $userid))) {
+        // Figure out which webhook URL to use. If neither set, abort.
+        if ($this->is_using_slackbutton()) {
+            if (empty($webhookurl = get_user_preferences('message_processor_slack_url', '', $userid))) {
+                return true;
+            }
+        } else if (empty($webhookurl = $this->slackmanager->config('webhookurl')) ||
+            empty($channelname = get_user_preferences( 'message_processor_slack_slackusername', '', $userid))) {
             return true;
         }
 
         $message = $this->slackify_message($message);
 
-        $curl = new curl();
-        $username = !empty($this->config('botname')) ? '"username": "'.$this->config('botname').'", ' : '';
+        $curl = new \curl();
 
-        $payload = ['payload' => '{"channel": "'.$channelname.'", '.$username.'"text": "'.$message.'"}'];
-        $curl->post($this->config('webhookurl'), $payload);
+        if ($this->is_using_slackbutton()) {
+            $payload = ['payload' => '{"text": "'.$message.'"}'];
+        } else {
+            $username = !empty($this->config('botname')) ? '"username": "'.$this->config('botname').'", ' : '';
+            $payload = ['payload' => '{"channel": "'.$channelname.'", '.$username.'"text": "'.$message.'"}'];
+        }
+
+        $curl->post($webhookurl, $payload);
 
         return true;
     }
+
     /**
      * Function to filter content and return to slack's API requirements.
      * @param string $message Message to slackify.
      * @return string The slackified string.
      */
-    static public function slackify_message($message) {
+    public static function slackify_message($message) {
         // Slack needs to escape quotes, move links into angle brackets, and use \n for line breaks.
 
         // Change linked text to Slack style with a placeholder for adding back at the end.
@@ -124,11 +136,11 @@ class manager {
      * @param int $userid The Moodle id of the user to check.
      * @return boolean
      */
-    function is_user_configured($userid) {
-       return (!$this->is_using_slackbutton() &&
-               !empty(get_user_preferences('message_processor_slack_slackusername', null, $userid))) ||
-              ($this->is_using_slackbutton() &&
-               !empty(get_user_preferences('message_processor_slack_configuration_url', null, $userid)));
+    public function is_user_configured($userid) {
+        return (!$this->is_using_slackbutton() &&
+                !empty(get_user_preferences('message_processor_slack_slackusername', null, $userid))) ||
+               ($this->is_using_slackbutton() &&
+                !empty(get_user_preferences('message_processor_slack_configuration_url', null, $userid)));
     }
     /**
      * Return the appropriate user configuration button code.
@@ -139,20 +151,20 @@ class manager {
     private function user_config_slackbutton($preferences, $userid) {
         global $CFG;
 
-        $configuration_url = $preferences->slack_configuration_url;
-        if (empty($configuration_url)) {
+        $configurationurl = $preferences->slack_configuration_url;
+        if (empty($configurationurl)) {
             // Need to add a 'redirect_uri' argument to this link. It will return to a script to complete the actions.
-            $redirect_uri = $this->redirect_uri();
+            $redirecturi = $this->redirect_uri();
             // Create a state variable that confirms that the same user that sent this, receives it.
             $state = $this->state_var($userid);
             $configbutton = get_string('connectslackaccount', 'message_slack') .
-                '<a href="'.$this->config('webhookurl').'&redirect_uri='.$redirect_uri.'&state='.$state.'">' .
+                '<a href="'.$this->config('slackbuttonurl').'&redirect_uri='.$redirecturi.'&state='.$state.'">' .
                 '<img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" ' .
                 'srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, ' .
                 'https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>';
         } else {
             $configbutton = get_string('manageslackaccount', 'message_slack') .
-                '<a href="'.$configuration_url.'">' .
+                '<a href="'.$configurationurl.'">' .
                 '<img alt="Configure Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" ' .
                 'srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, ' .
                 'https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>';
@@ -174,10 +186,10 @@ class manager {
     /**
      * Construct a state variable to use with the OAuth 2 API.
      * @param int $userid The id of the Moodle user.
-     * @return string A constructed state variable for this user.
+     * @return string A constructed state variable for this user (Moodle's sesskey).
      */
     public function state_var($userid) {
-        return 'moodleuser' . $userid;
+        return sesskey();
     }
 
     /**

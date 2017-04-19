@@ -63,11 +63,6 @@ class message_output_slack extends message_output {
             return true;
         }
 
-        // If no slack URL congigured, skip.
-        if (empty($this->slackmanager->config('webhookurl'))) {
-            return true;
-        }
-
         $message = !empty($eventdata->fullmessagehtml) ? $eventdata->fullmessagehtml : $eventdata->fullmessage;
 
         return $this->slackmanager->send_message($message, $eventdata->userto->id);
@@ -119,7 +114,9 @@ class message_output_slack extends message_output {
      * @return boolean true if Slack is configured
      */
     public function is_system_configured() {
-        return !empty($this->slackmanager->config('webhookurl'));
+        return (($this->slackmanager->is_using_slackbutton() && !empty($this->slackmanager->config('clientid')) &&
+                 !empty($this->slackmanager->config('clientsecret'))) ||
+                (!$this->slackmanager->is_using_slackbutton() && !empty($this->slackmanager->config('webhookurl'))));
     }
 
     /**

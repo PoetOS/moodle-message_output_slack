@@ -7,7 +7,7 @@ cache:
     - $HOME/.composer/cache
 
 php:
-# - 5.6 Disaabling for release because of weired Behat error.
+ - 5.6
  - 7.0
 
 env:

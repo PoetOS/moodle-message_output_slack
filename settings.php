@@ -34,8 +34,6 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configtext('message_slack/botname', get_string('botname', 'message_slack'),
         get_string('configslackbotname', 'message_slack'), '', PARAM_TEXT));
 
-    $settings->add(new admin_setting_configtext('message_slack/slackbuttonurl', get_string('slackbuttonurl', 'message_slack'),
-        get_string('configslackbuttonurl', 'message_slack'), '', PARAM_URL));
     $settings->add(new admin_setting_configtext('message_slack/clientid', get_string('clientid', 'message_slack'),
         get_string('configclientid', 'message_slack'), '', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('message_slack/clientsecret', get_string('clientsecret', 'message_slack'),

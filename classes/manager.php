@@ -26,6 +26,7 @@
 namespace message_slack;
 
 defined('MOODLE_INTERNAL') || die();
+require_once($CFG->dirroot.'/lib/filelib.php');
 
 /**
  * Slack helper manager class
@@ -34,6 +35,11 @@ defined('MOODLE_INTERNAL') || die();
  * @copyright  2017 onwards Mike Churchward (mike.churchward@poetgroup.org)
  */
 class manager {
+
+    /**
+     * @var $validated Moodle can call is_user_configured repeatedly. Use this to cash the curl result.
+     */
+    private $validated = null;
 
     /**
      * Constructor. Loads all needed data.
@@ -70,7 +76,12 @@ class manager {
             $payload = ['payload' => '{"channel": "'.$channelname.'", '.$username.'"text": "'.$message.'"}'];
         }
 
-        $curl->post($webhookurl, $payload);
+        $response = $curl->post($webhookurl, $payload);
+
+        // Check if the incoming webhook has been removed by the user. If it has, the user will need to re-establish the connection.
+        if ($response == 'No service') {
+            $this->clear_user_connection($userid);
+        }
 
         return true;
     }
@@ -137,11 +148,11 @@ class manager {
      * @return boolean
      */
     public function is_user_configured($userid) {
-        return (!$this->is_using_slackbutton() &&
-                !empty(get_user_preferences('message_processor_slack_slackusername', null, $userid))) ||
-               ($this->is_using_slackbutton() &&
-                !empty(get_user_preferences('message_processor_slack_configuration_url', null, $userid)));
+        return ((!$this->is_using_slackbutton() &&
+                 !empty(get_user_preferences('message_processor_slack_slackusername', null, $userid))) ||
+                ($this->is_using_slackbutton() && $this->validate_user_connection($userid)));
     }
+
     /**
      * Return the appropriate user configuration button code.
      * @param object $preferences An object of user preferences.
@@ -154,11 +165,13 @@ class manager {
         $configurationurl = $preferences->slack_configuration_url;
         if (empty($configurationurl)) {
             // Need to add a 'redirect_uri' argument to this link. It will return to a script to complete the actions.
-            $redirecturi = $this->redirect_uri();
             // Create a state variable that confirms that the same user that sent this, receives it.
-            $state = $this->state_var($userid);
+            $buttonurl = 'https://slack.com/oauth/authorize?scope=incoming-webhook' .
+                '&client_id='.$this->config('clientid') .
+                '&redirect_uri='.$this->redirect_uri() .
+                '&state='.$this->state_var($userid);
             $configbutton = get_string('connectslackaccount', 'message_slack') .
-                '<a href="'.$this->config('slackbuttonurl').'&redirect_uri='.$redirecturi.'&state='.$state.'">' .
+                '<a href="'.$buttonurl.'">' .
                 '<img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" ' .
                 'srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, ' .
                 'https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>';
@@ -200,5 +213,137 @@ class manager {
         global $CFG;
 
         return $CFG->wwwroot.'/message/output/slack/slackconnect.php';
+    }
+
+    /**
+     * Handle the token issuing steps of the Slack OAuth flow (see https://api.slack.com/docs/oauth).
+     * The OAuth API call returns a JSON object like:
+     *     {"ok":true,
+     *      "access_token":"xoxp-167842963185-169046927332-170233992628-229b1d9e56af86fac6b1319ceb97a621",
+     *      "scope":"identify,incoming-webhook",
+     *      "user_id":"U4Z1CT99S",
+     *      "team_name":"POET",
+     *      "team_id":"T4XQSUB5F",
+     *      "incoming_webhook":
+     *          {"channel":"@mikechurchward.ca",
+     *           "channel_id":"D4ZLL6F2B",
+     *           "configuration_url":"https:\/\/poetdev.slack.com\/services\/B506QFUEN",
+     *           "url":"https:\/\/hooks.slack.com\/services\/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"
+     *          }
+     *      }
+     * @param string $code The temporary authorization code.
+     * @param string $state The security identifier to verify the call was made from Moodle (sesskey).
+     * @param int $userid The Moodle user ID.
+     * @return boolean Success of the operation.
+     */
+    public function issue_token($code, $state, $userid) {
+
+        // Handle any problems first.
+        if ($this->state_var($userid) != $state) {
+            echo 'Error - unexpected state variable.';
+            return false;
+        }
+        if (empty($redirecturi = $this->redirect_uri())) {
+            echo 'Error - no defined redirect_uri';
+            return false;
+        }
+        if (empty($clientid = $this->config('clientid'))) {
+            echo 'Error - no defined client_id';
+            return false;
+        }
+        if (empty($clientsecret = $this->config('clientsecret'))) {
+            echo 'Error - no defined client_secret';
+            return false;
+        }
+
+        $curl = new \curl();
+
+        $args = ['client_id' => $clientid, 'client_secret' => $clientsecret, 'code' => $code, 'redirect_uri' => $redirecturi];
+        $response = json_decode($curl->get('https://slack.com/api/oauth.access', $args));
+
+        // Validate response data.
+        if (!$response->ok) {
+            echo 'Error - invalid Oauth response.';
+            return false;
+        }
+
+        $slackuserid = get_user_preferences('message_processor_slack_user_id', '', $userid);
+        if (!empty($slackuserid) && ($slackuserid != $response->user_id)) {
+            echo 'Error - incorrect Slack user id returned.';
+            return false;
+        }
+
+        $this->set_user_connection($userid, $response->user_id, $response->access_token, $response->incoming_webhook->channel,
+            $response->incoming_webhook->channel_id, $response->incoming_webhook->configuration_url,
+            $response->incoming_webhook->url);
+
+        $this->validated = true;
+
+        return true;
+    }
+
+    /**
+     * Set the user connection data for a slack button incoming webhook.
+     * @param int $userid The Moodle user ID to set data for.
+     * @param string $slackuserid The Slack user ID.
+     * @param string $accesstoken The Slack access token for this user's webhook.
+     * @param string $channel The Slack channel name chosen by the user.
+     * @param string $channelid The ID of the previous Slack channel.
+     * @param string $configurationurl The URL to manage a connected Slack webhook.
+     * @param string $url The webhook URL to use for this user's messages.
+     */
+    public function set_user_connection($userid, $slackuserid, $accesstoken, $channel, $channelid, $configurationurl, $url) {
+        set_user_preferences(['message_processor_slack_user_id' => $slackuserid,
+            'message_processor_slack_access_token' => $accesstoken,
+            'message_processor_slack_channel' => $channel,
+            'message_processor_slack_channel_id' => $channelid,
+            'message_processor_slack_configuration_url' => $configurationurl,
+            'message_processor_slack_url' => $url], $userid);
+    }
+
+    /**
+     * Clear the user's slack connection information.
+     * @param int $userid The Moodle user to clear the info for.
+     */
+    public function clear_user_connection($userid) {
+        unset_user_preference('message_processor_slack_user_id', $userid);
+        unset_user_preference('message_processor_slack_access_token', $userid);
+        unset_user_preference('message_processor_slack_channel', $userid);
+        unset_user_preference('message_processor_slack_channel_id', $userid);
+        unset_user_preference('message_processor_slack_configuration_url', $userid);
+        unset_user_preference('message_processor_slack_url', $userid);
+    }
+
+    /**
+     * Validate a configured Slack user connection.
+     * @param int $userid The Moodle userid.
+     * @param boolean $force Force the validation check, regardless of the cached value.
+     * @return boolean
+     */
+    private function validate_user_connection($userid, $force=false) {
+        // If previously determined in this run, return the cached validated value.
+        if (!$force && ($this->validated !== null)) {
+            return $this->validated;
+        }
+
+        // If no token set, no valid connection.
+        if (!($token = get_user_preferences('message_processor_slack_access_token', null, $userid))) {
+            $this->validated = false;
+            return $this->validated;
+        }
+
+        $curl = new \curl();
+        $response = json_decode($curl->get('https://slack.com/api/auth.test', ['token' => $token]));
+        if ($response->ok) {
+            $this->validated = true;
+            return $this->validated;
+        } else if (($response->error == 'token_revoked') || ($response->error == 'invalid_auth')) {
+            $this->clear_user_connection($userid);
+            $this->validated = false;
+            return $this->validated;
+        }
+
+        // Not sure why it failed, so return true (could be a bad internet connection?).
+        return true;
     }
 }

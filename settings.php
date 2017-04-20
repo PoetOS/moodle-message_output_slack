@@ -26,14 +26,8 @@
 defined('MOODLE_INTERNAL') || die;
 
 if ($ADMIN->fulltree) {
-    $settings->add(new admin_setting_configcheckbox('message_slack/useslackbutton', get_string('useslackbutton', 'message_slack'),
-        get_string('configuseslackbutton', 'message_slack'), 1));
-
-    $settings->add(new admin_setting_configtext('message_slack/webhookurl', get_string('slackwebhookurl', 'message_slack'),
-        get_string('configslackwebhookurl', 'message_slack'), '', PARAM_URL));
-    $settings->add(new admin_setting_configtext('message_slack/botname', get_string('botname', 'message_slack'),
-        get_string('configslackbotname', 'message_slack'), '', PARAM_TEXT));
-
+    $settings->add(new admin_setting_configtext('message_slack/teamurl', get_string('teamurl', 'message_slack'),
+        get_string('configteamurl', 'message_slack'), '', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('message_slack/clientid', get_string('clientid', 'message_slack'),
         get_string('configclientid', 'message_slack'), '', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('message_slack/clientsecret', get_string('clientsecret', 'message_slack'),

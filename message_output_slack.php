@@ -89,24 +89,25 @@ class message_output_slack extends message_output {
      * @param array $preferences preferences array
      */
     public function process_form($form, &$preferences) {
-        if (isset($form->slack_slackusername) && !empty($form->slack_slackusername)) {
-            // Put the @ sign at the beginning of the username.
-            if (substr($form->slack_slackusername, 0, 1) != '@') {
-                $form->slack_slackusername = '@' . $form->slack_slackusername;
-            }
-            $preferences['message_processor_slack_slackusername'] = $form->slack_slackusername;
-        }
+        // This is handled by the callback in slackconnect.php. If there is ever a form to do this, it would need similar options
+        // as in "manager::function set_user_connection".
+        return true;
     }
 
     /**
-     * Loads the config data from database to put on the form during initial form display
+     * Loads the config data from database to put on the form during initial form display.
+     * There is no real form for this, so these are here primarily for documentation purposes.
      *
      * @param object $preferences preferences object
      * @param int $userid the user id
      */
     public function load_data(&$preferences, $userid) {
-        $preferences->slack_slackusername = get_user_preferences('message_processor_slack_slackusername', '', $userid);
+        $preferences->slack_user_id = get_user_preferences('message_processor_slack_user_id', '', $userid);
+        $preferences->slack_access_token = get_user_preferences('message_processor_slack_access_token', '', $userid);
+        $preferences->slack_channel = get_user_preferences('message_processor_slack_channel', '', $userid);
+        $preferences->slack_channel_id = get_user_preferences('message_processor_slack_channel_id', '', $userid);
         $preferences->slack_configuration_url = get_user_preferences('message_processor_slack_configuration_url', '', $userid);
+        $preferences->slack_url = get_user_preferences('message_processor_slack_url', '', $userid);
     }
 
     /**
@@ -114,9 +115,7 @@ class message_output_slack extends message_output {
      * @return boolean true if Slack is configured
      */
     public function is_system_configured() {
-        return (($this->slackmanager->is_using_slackbutton() && !empty($this->slackmanager->config('clientid')) &&
-                 !empty($this->slackmanager->config('clientsecret'))) ||
-                (!$this->slackmanager->is_using_slackbutton() && !empty($this->slackmanager->config('webhookurl'))));
+        return (!empty($this->slackmanager->config('clientid')) && !empty($this->slackmanager->config('clientsecret')));
     }
 
     /**
@@ -131,6 +130,6 @@ class message_output_slack extends message_output {
         if ($user === null) {
             $user = $USER;
         }
-        return $this->slackmanager->is_user_configured($user->id);
+        return $this->slackmanager->validate_user_connection($user->id);
     }
 }

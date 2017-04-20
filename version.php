@@ -31,4 +31,4 @@ $plugin->requires = 2016111500; // Moodle version.
 $plugin->component = 'message_slack';
 
 $plugin->release  = '3.2.0 (Build - 2017040400)';
-$plugin->maturity  = MATURITY_ALPHA;
+$plugin->maturity  = MATURITY_BETA;

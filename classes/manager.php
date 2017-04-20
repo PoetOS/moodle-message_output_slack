@@ -55,26 +55,16 @@ class manager {
      * @param int $userid The Moodle user id that is being sent to.
      */
     public function send_message($message, $userid) {
-        // Figure out which webhook URL to use. If neither set, abort.
-        if ($this->is_using_slackbutton()) {
-            if (empty($webhookurl = get_user_preferences('message_processor_slack_url', '', $userid))) {
+        // Get the user's incoming webhook URL. If not configured, abort.
+        if (empty($webhookurl = get_user_preferences('message_processor_slack_url', '', $userid))) {
                 return true;
-            }
-        } else if (empty($webhookurl = $this->slackmanager->config('webhookurl')) ||
-            empty($channelname = get_user_preferences( 'message_processor_slack_slackusername', '', $userid))) {
-            return true;
         }
 
         $message = $this->slackify_message($message);
 
         $curl = new \curl();
 
-        if ($this->is_using_slackbutton()) {
-            $payload = ['payload' => '{"text": "'.$message.'"}'];
-        } else {
-            $username = !empty($this->config('botname')) ? '"username": "'.$this->config('botname').'", ' : '';
-            $payload = ['payload' => '{"channel": "'.$channelname.'", '.$username.'"text": "'.$message.'"}'];
-        }
+        $payload = ['payload' => '{"text": "'.$message.'"}'];
 
         $response = $curl->post($webhookurl, $payload);
 
@@ -128,38 +118,6 @@ class manager {
      * @return string The HTML for the form.
      */
     public function config_form ($preferences, $userid) {
-        if ($this->is_using_slackbutton()) {
-            return $this->user_config_slackbutton($preferences, $userid);
-        } else {
-            return $this->user_config_slackusername($preferences);
-        }
-    }
-
-    /**
-     * @return boolean true if Slack is using the configure user connection slack button.
-     */
-    public function is_using_slackbutton() {
-        return ($this->config('useslackbutton') == 1);
-    }
-
-    /**
-     * Returns true if the user has their Slack configuration needed for integration.
-     * @param int $userid The Moodle id of the user to check.
-     * @return boolean
-     */
-    public function is_user_configured($userid) {
-        return ((!$this->is_using_slackbutton() &&
-                 !empty(get_user_preferences('message_processor_slack_slackusername', null, $userid))) ||
-                ($this->is_using_slackbutton() && $this->validate_user_connection($userid)));
-    }
-
-    /**
-     * Return the appropriate user configuration button code.
-     * @param object $preferences An object of user preferences.
-     * @param int $userid Moodle id of the user in question.
-     * @return string The appropriate button code.
-     */
-    private function user_config_slackbutton($preferences, $userid) {
         global $CFG;
 
         $configurationurl = $preferences->slack_configuration_url;
@@ -170,30 +128,17 @@ class manager {
                 '&client_id='.$this->config('clientid') .
                 '&redirect_uri='.$this->redirect_uri() .
                 '&state='.$this->state_var($userid);
-            $configbutton = get_string('connectslackaccount', 'message_slack') .
+            $configbutton = get_string('connectslackaccount', 'message_slack', $this->config('teamurl')) .
                 '<a href="'.$buttonurl.'">' .
                 '<img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" ' .
                 'srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, ' .
                 'https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>';
         } else {
-            $configbutton = get_string('manageslackaccount', 'message_slack') .
-                '<a href="'.$configurationurl.'">' .
-                '<img alt="Configure Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" ' .
-                'srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, ' .
-                'https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>';
+            $configbutton = '<a href="'.$configurationurl.'">' .
+                get_string('manageslackaccount', 'message_slack', $this->config('teamurl')) . '</a>';
         }
 
         return $configbutton;
-    }
-
-    /**
-     * Return the appropriate HTML code for the Slack channel to post to for incoming webhook config.
-     * @param object $preferences An object of user preferences.
-     * @return string The appropriate button code.
-     */
-    private function user_config_slackusername($preferences) {
-        return get_string('slackusername', 'message_slack').': <input size="30" name="slack_slackusername" value="' .
-            s($preferences->slack_slackusername).'" />';
     }
 
     /**
@@ -320,7 +265,7 @@ class manager {
      * @param boolean $force Force the validation check, regardless of the cached value.
      * @return boolean
      */
-    private function validate_user_connection($userid, $force=false) {
+    public function validate_user_connection($userid, $force=false) {
         // If previously determined in this run, return the cached validated value.
         if (!$force && ($this->validated !== null)) {
             return $this->validated;

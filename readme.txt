@@ -1,20 +1,31 @@
 This plugin experiments with providing a Moodle message provider plugin for Slack.
-It requires an Incoming Webhook setup in the Slack Team to be used (see https://api.slack.com/incoming-webhooks).
 
-To set up an incoming WebHook in your Slack...
-    https://[yourteam].slack.com/apps/A0F7XDUAZ-incoming-webhooks
+It requires a Slack App be set up in the team, using https://api.slack.com/apps. Once created, the basic information screen for that
+App will show the Client ID and the Client Secret required for the Moodle plugin configuration.
 
-Each user will also need to add their Slack username from the team site to their notification preferences.
+This is setup so that "only one" Slack Team can be set up at the site level. Anyone wishing to have a Slack notification setup
+for their Moodle account must be a member of that team and use their account for that team.
 
+The user connection is done via the Slack button, which uses the OAuth 2.0 protocol in Slack (https://api.slack.com/docs/oauth).
+The team will require an App setup in order to get the client id and secret that is required for the OAuth protocol and to attach
+incoming webhooks to for each user account. Team apps can be set up here - https://api.slack.com/apps.
+
+If the user logs into a different team Slack when trying to connect Moodle, they will receive the error:
+"OAuth Error: invalid_team_for_non_distributed_app".
+If the user is already logged into a different team Slack when trying to connect Moodle, they will receive the team login screen
+for Slack until they do login to the correct Slack.
+I am trying to determine if there is a way to "force" the login to the correct team.
+
+-----
 *** This is an ALPHA release, and is not intended to be used in any production environment ***
 
 If you wish to contribute in any way, message me on github or to mike.churchward@poetgroup.org.
 
-
 -----
-
-A better way to do this might be by Slack button... https://api.slack.com/docs/slack-button
-It does put the message in the user's private area.
-You configure a button, and then add the client_id and client_secret to the Moodle config.
-Then each user uses the button to configure their specific instance. The button generates a specific URL for each user.
-I need to figure out how to limit the choice of channel to just the user.
+Future thoughts:
+- It may be possible to allow users to pick their own teams, but it would involve the same complex setup for each user as it is
+for the site setup.
+- It would be great if the current configuration forced the team set at the site level so that the user account connection is
+simplified.
+- It would also be great if the connection to Slack could use the Slack user's user name to set the channel rather than force the
+user to pick one.

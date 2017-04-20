@@ -33,6 +33,7 @@ require_once($CFG->dirroot.'/lib/filelib.php');
  *
  * @author  Mike Churchward
  * @copyright  2017 onwards Mike Churchward (mike.churchward@poetgroup.org)
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class manager {
 
@@ -185,36 +186,33 @@ class manager {
 
         // Handle any problems first.
         if ($this->state_var($userid) != $state) {
-            echo 'Error - unexpected state variable.';
-            return false;
-        }
-        if (empty($redirecturi = $this->redirect_uri())) {
-            echo 'Error - no defined redirect_uri';
+            debugging('Error - unexpected state variable received. Possible exploit.');
             return false;
         }
         if (empty($clientid = $this->config('clientid'))) {
-            echo 'Error - no defined client_id';
+            print_error('noclientid', 'message_slack');
             return false;
         }
         if (empty($clientsecret = $this->config('clientsecret'))) {
-            echo 'Error - no defined client_secret';
+            print_error('noclientsecret', 'message_slack');
             return false;
         }
 
         $curl = new \curl();
 
-        $args = ['client_id' => $clientid, 'client_secret' => $clientsecret, 'code' => $code, 'redirect_uri' => $redirecturi];
+        $args = ['client_id' => $clientid, 'client_secret' => $clientsecret, 'code' => $code,
+            'redirect_uri' => $this->redirect_uri()];
         $response = json_decode($curl->get('https://slack.com/api/oauth.access', $args));
 
         // Validate response data.
         if (!$response->ok) {
-            echo 'Error - invalid Oauth response.';
+            print_error('invalidoauthresponse', 'message_slack');
             return false;
         }
 
         $slackuserid = get_user_preferences('message_processor_slack_user_id', '', $userid);
         if (!empty($slackuserid) && ($slackuserid != $response->user_id)) {
-            echo 'Error - incorrect Slack user id returned.';
+            print_error('invalidslackuser', 'message_slack');
             return false;
         }
 

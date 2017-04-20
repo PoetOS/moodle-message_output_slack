@@ -25,6 +25,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * Install the Slack message processor
+ */
+
 function xmldb_message_slack_install() {
     global $DB;
     $result = true;

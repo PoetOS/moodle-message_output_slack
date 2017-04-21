@@ -37,6 +37,6 @@ $string['manageslackaccount'] = 'Remove your {$a} slack account connection ';
 $string['noclientid'] = 'No defined client_id';
 $string['noclientsecret'] = 'No defined client_secret';
 $string['notconfigured'] = 'The Slack server hasn\'t been configured so Slack messages cannot be sent';
-$string['pluginname'] = 'Slack message processor';
+$string['pluginname'] = 'Slack';
 $string['slackusername'] = 'Your Slack username (@username)';
 $string['teamurl'] = 'Team URL';

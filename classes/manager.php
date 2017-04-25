@@ -89,7 +89,7 @@ class manager {
         $message = preg_replace('/<a href="(.*?)".*?>(.*?)<\/a>/', '<slack ${1}|${2}>', $message);
 
         // Change <br>, <div> and <p> to \n.
-        $message = preg_replace(['/<br\s*\/?>/', '/<p.*?>/', '/<div.*?>/', '/<\/p>/', '/<\/div>/'], ['\n', '\n', '\n'], $message);
+        $message = preg_replace(['/<br\s*\/?>/', '/<p.*?>/', '/<div.*?>/', '/<\/p>/', '/<\/div>/'], ["\n", "\n", "\n"], $message);
 
         // Add slashes to any remaining quote characters.
         $message = addcslashes($message, '\'"');

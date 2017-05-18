@@ -86,16 +86,16 @@ class manager {
         // Slack needs to escape quotes, move links into angle brackets, and use \n for line breaks.
 
         // Change linked text to Slack style with a placeholder for adding back at the end.
-        $message = preg_replace('/<a href="(.*?)".*?>(.*?)<\/a>/', '<slack ${1}|${2}>', $message);
+        $message = preg_replace('/<a .*?href=["\'](.*?)["\'].*?>(.*?)<\/a>/', '<slack ${1}|${2}>', $message);
 
         // Change <br>, <div> and <p> to \n.
-        $message = preg_replace(['/<br\s*\/?>/', '/<p.*?>/', '/<div.*?>/', '/<\/p>/', '/<\/div>/'], ["\n", "\n", "\n"], $message);
+        $message = preg_replace(['/<br\s*?\/?>/', '/<p.*?>/', '/<div.*?>/', '/<\/p>/', '/<\/div>/'], ["\n", "\n", "\n"], $message);
 
         // Add slashes to any remaining quote characters.
-        $message = addcslashes($message, '\'"');
+        $message = addcslashes($message, '"');
 
         // Clean any remaining tags except the ones we marked as placeholders.
-        $message = strip_tags($message, '<slack>');
+        $message = preg_replace('/<(?!slack).*?>/', '', $message);
 
         // Finally, restore marked slack tags.
         $message = str_replace('<slack ', '<', $message);

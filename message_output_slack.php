@@ -63,7 +63,9 @@ class message_output_slack extends message_output {
             return true;
         }
 
-        $message = !empty($eventdata->fullmessagehtml) ? $eventdata->fullmessagehtml : $eventdata->fullmessage;
+        // $message = !empty($eventdata->fullmessagehtml) ? $eventdata->fullmessagehtml : $eventdata->fullmessage;
+        // Safer to use the non-html message.
+        $message = $eventdata->fullmessage;
 
         return $this->slackmanager->send_message($message, $eventdata->userto->id);
     }

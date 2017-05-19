@@ -54,7 +54,7 @@ class message_slack_manager_testcase extends advanced_testcase {
 
         // Verify double quotes are escaped with backslashes.
         $message3 = 'Single quote - \'. Double quote - ".';
-        $expected3 = 'Single quote - \\\'. Double quote - \\".';
+        $expected3 = 'Single quote - \'. Double quote - \\".';
         $output = $slackmanager->slackify_message($message3);
         $this->assertEquals($expected3, $output);
 

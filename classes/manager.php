@@ -119,8 +119,6 @@ class manager {
      * @return string The HTML for the form.
      */
     public function config_form ($preferences, $userid) {
-        global $CFG;
-
         $configurationurl = $preferences->slack_configuration_url;
         if (empty($configurationurl)) {
             // Need to add a 'redirect_uri' argument to this link. It will return to a script to complete the actions.

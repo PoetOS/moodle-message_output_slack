@@ -1,5 +1,8 @@
 Release Notes
 
+Version 3.2.3 (Build - 2017071200)
+Moved from Beta to Stable.
+
 Version 3.2.2 (Build - 2017051900)
 Improvements:
 Used only text version of notifications and messages so that formatting in Slack isn't terrible.
